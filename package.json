@@ -1,6 +1,6 @@
 {
   "name": "dsh-affect-bridge",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Bridge AstrBot's hormone / emotion / energy state into DSH desktop sessions (off by default, switch on manually): injects the current mood block and exposes affect_status / affect_note / affect_energy_at tools.",
   "type": "module",
   "main": "./src/index.js",

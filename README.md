@@ -7,21 +7,35 @@
 双向联动是**手动开关**，默认关。关着的时候这个插件不注入任何东西、也不注册工具，
 桌面侧和没装一样；AstrBot 侧也要有 `two_way_enabled: true` 才会消费桌面事件。
 
-打开方式二选一（环境变量优先）：
+打开方式三选一（优先级从高到低）：
 
 ```powershell
-# 1) 环境变量（写进用户环境变量，重启 DSH 生效）
+# 1) 环境变量（写进用户环境变量；DSH 只在启动那一刻读，必须重启进程才生效）
 setx DSH_AFFECT_BRIDGE on
 ```
 
+```json
+// 2) 本机配置文件 <DSH_HOME 或 ~\.dsh>\affect-bridge.json（推荐：桌面应用看不到 setx 写的变量）
+{
+  "enabled": true,
+  "instanceData": "…\\instances\\<id>\\core\\data",
+  "pluginDir": "…\\astrbot_plugin_affect_core",
+  "masterQq": "你的 QQ 号"
+}
+```
+
 ```yaml
-# 2) 插件配置：cordis.patch.yml 里那一行改成 enabled: true
+# 3) 插件配置：cordis.patch.yml 里那一行改成 enabled: true
 - insert:
     - id: dsh-affect-bridge
       name: dsh-affect-bridge
       config:
         enabled: true
 ```
+
+> 为什么推荐第 2 种：Electron 启动的 DSH 进程会继承它**启动时**的环境变量，
+> 之后 `setx` 写进去的值它看不到；而 `affect-bridge.json` 是每次 `apply` 现读的。
+> 这个文件放在用户目录里，仓库里不会出现任何个人路径或 QQ 号。
 
 两边都开着才是真正的双向：桌面能读到激素/情绪，`affect_note` 也能写回去影响 QQ 侧的激素。
 

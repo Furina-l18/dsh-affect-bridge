@@ -1,7 +1,7 @@
 {
   "name": "dsh-affect-bridge",
   "description": "把 AstrBot 的激素 / 情绪 / 能量状态接进 DSH（双向联动默认关闭，需手动打开）：会话开头注入当前心情块，并提供 affect_status、affect_note、affect_energy_at 三个工具。",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "entry": {
     "name": "dsh-affect-bridge",
     "inject": [

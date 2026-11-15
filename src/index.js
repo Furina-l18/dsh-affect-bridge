@@ -14,15 +14,38 @@
 //   - 任何异常都吞掉，注入失败不能拖垮 prompt 构建
 
 import { readFileSync, appendFileSync, statSync, mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 
 export const name = 'dsh-affect-bridge';
 export const inject = ['systemPrompt', 'tools'];
 
-// 三个环境变量都必须自己配，仓库里不留任何个人路径 / QQ 号
-const INSTANCE_DATA = process.env.DSH_ASTRBOT_INSTANCE_DATA || '';
-const PLUGIN_DIR = process.env.DSH_ASTRBOT_AFFECT_PLUGIN_DIR || '';
-const MASTER_QQ = process.env.DSH_MASTER_QQ || '';
+/**
+ * 本机配置：优先环境变量，其次 `<DSH_HOME 或 ~/.dsh>/affect-bridge.json`。
+ *
+ * 为什么要有这个文件：Electron 启动的 DSH 只在启动那一刻读一次环境变量，
+ * 之后 `setx` 写进去的值它看不到；桌面应用又不是从新开的终端里起的，
+ * 让用户「改环境变量再重启」很容易踩空。放一个文件就没有这个问题。
+ *
+ * 文件形状（全都可以不写）：
+ *   { "enabled": true, "instanceData": "…\\core\\data", "pluginDir": "…\\astrbot_plugin_affect_core", "masterQq": "…" }
+ */
+function readLocal() {
+  const home = process.env.DSH_HOME || path.join(homedir(), '.dsh');
+  try {
+    const raw = JSON.parse(readFileSync(path.join(home, 'affect-bridge.json'), 'utf8'));
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+const LOCAL = readLocal();
+
+// 仓库里不留任何个人路径 / QQ 号：要么自己设环境变量，要么用上面那个本机文件
+const INSTANCE_DATA = process.env.DSH_ASTRBOT_INSTANCE_DATA || LOCAL.instanceData || '';
+const PLUGIN_DIR = process.env.DSH_ASTRBOT_AFFECT_PLUGIN_DIR || LOCAL.pluginDir || '';
+const MASTER_QQ = process.env.DSH_MASTER_QQ || LOCAL.masterQq || '';
 
 /** 没配路径时所有读取都跳过，注入块返回空串，工具返回明确错误。 */
 const configured = Boolean(INSTANCE_DATA && PLUGIN_DIR);
@@ -30,9 +53,10 @@ const configured = Boolean(INSTANCE_DATA && PLUGIN_DIR);
 /**
  * 双向联动总开关，默认关闭。
  *
- * 打开方式（二选一，环境变量优先）：
- *   - 环境变量 DSH_AFFECT_BRIDGE=on / 1 / true
- *   - 插件配置 enabled: true（cordis.patch.yml 里的 config 行）
+ * 打开方式（优先级从高到低）：
+ *   1. 环境变量 DSH_AFFECT_BRIDGE=on / 1 / true （off / 0 / false 强制关闭）
+ *   2. `~/.dsh/affect-bridge.json` 里 `"enabled": true`
+ *   3. 插件配置 enabled: true（cordis.patch.yml 里的 config 行）
  *
  * 关闭时：不注入状态块、不注册三个工具、不写事件队列 —— 桌面侧行为和没装这个插件一样。
  */
@@ -40,6 +64,7 @@ function bridgeEnabled(config) {
   const raw = String(process.env.DSH_AFFECT_BRIDGE || '').trim().toLowerCase();
   if (['on', '1', 'true', 'yes'].includes(raw)) return true;
   if (['off', '0', 'false', 'no'].includes(raw)) return false;
+  if (typeof LOCAL.enabled === 'boolean') return LOCAL.enabled;
   return config?.enabled === true;
 }
 
